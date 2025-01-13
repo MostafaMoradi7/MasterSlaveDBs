@@ -7,6 +7,9 @@ class User(models.Model):
     admin = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    def __str__(self):
+        return f"{self.id}. {self.first_name}-{self.last_name}"
+
 
 
 class Order(models.Model):
@@ -25,5 +28,5 @@ class Order(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid4, editable=False, unique=True)
 
     def __str__(self):
-        return f"{self.product}-{self.user.username}-"
+        return f"{self.id}. {self.product}-{self.user.first_name}-{self.user.last_name}"
 

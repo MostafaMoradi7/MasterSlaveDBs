@@ -40,11 +40,12 @@ class Ordering(APIView):
                 return Response(status=status.HTTP_400_BAD_REQUEST, data={"message" : "only admins can change order status"})
             else:
                 order.status = serializer.validated_data['status']
+                order.save()
                 return Response(status=status.HTTP_200_OK, data=serializer.data)
         else:
             return Response(status=status.HTTP_400_BAD_REQUEST, data=serializer.errors)
 
-    def get(self, order_id):
+    def get(self,request, order_id):
         order = get_object_or_404(Order, id=order_id)
         return Response(status=status.HTTP_200_OK, data=order.status)
 
@@ -56,7 +57,7 @@ class UserView(APIView):
         serializer = UserSerializer(data=data)
         if serializer.is_valid():
             serializer.save()
-            return Response(status=status.HTTp_201_CREATED, data=serializer.data)
+            return Response(status=status.HTTP_201_CREATED, data=serializer.data)
         else:
             return Response(status=status.HTTP_400_BAD_REQUEST, data=serializer.errors)
 
