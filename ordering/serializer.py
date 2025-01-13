@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from .models import User
 
 
 class OrderSerializer(serializers.Serializer):
@@ -10,3 +11,9 @@ class OrderSerializer(serializers.Serializer):
 class OrderStatusSerializer(serializers.Serializer):
     user_id = serializers.IntegerField()
     status = serializers.CharField(max_length=100)
+
+
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = '__all__'

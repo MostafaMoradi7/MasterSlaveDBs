@@ -2,7 +2,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny
-from .serializer import OrderSerializer, OrderStatusSerializer
+from .serializer import OrderSerializer, OrderStatusSerializer, UserSerializer
 from django.shortcuts import get_object_or_404
 from .models import User, Order
 import logging
@@ -47,3 +47,20 @@ class Ordering(APIView):
     def get(self, order_id):
         order = get_object_or_404(Order, id=order_id)
         return Response(status=status.HTTP_200_OK, data=order.status)
+
+class UserView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        data = request.data
+        serializer = UserSerializer(data=data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(status=status.HTTp_201_CREATED, data=serializer.data)
+        else:
+            return Response(status=status.HTTP_400_BAD_REQUEST, data=serializer.errors)
+
+    def get(self, request):
+        users = User.objects.all()
+        serializer = UserSerializer(users, many=True)
+        return Response(status=status.HTTP_200_OK, data=serializer.data)
