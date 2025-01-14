@@ -1,0 +1,61 @@
+---
+# Source: server/templates/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tracking-system-configmap
+data:
+  DATABASE_MASTER_HOST: postgres-postgresql-primary
+  MASTER_PORT: "5432"
+  PORT: "8000"
+  DATABASE_NAME: my_db
+  DATABASE_PASSWORD: password
+  DATABASE_USER: postgres
+  DATABASE_SLAVE_HOST: postgres-postgresql-read
+  SLAVE_PORT: "5432"
+---
+# Source: server/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: "tracking-system-svc"
+  labels:
+    app: "tracking-system"
+spec:
+  type: NodePort
+  ports:
+    - port: 30000
+      targetPort: 8000
+      protocol: TCP
+      name: http
+  selector:
+    app: "tracking-system"
+---
+# Source: server/templates/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: "tracking-system"
+  labels:
+    app: "tracking-system"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: "tracking-system"
+  template:
+    metadata:
+      labels:
+        app: "tracking-system"
+    spec:
+      containers:
+        - name: "tracking-system"
+          image: "tracking-system:1.0.0"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8000
+              protocol: TCP
+          envFrom:
+          - configMapRef:
+              name: tracking-system-configmap

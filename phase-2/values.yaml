@@ -1,0 +1,62 @@
+# PostgreSQL Configuration
+postgresql:
+  global:
+    postgresql:
+      auth:
+        username: tracking_user
+        password: tracking_password
+        database: my_db
+  replication:
+    enabled: true
+    slaveReplicas: 1
+  primary:
+    persistence:
+      enabled: true
+      storageClass: "standard"  # Replace with your storage class if different
+      size: 10Gi
+  replica:
+    persistence:
+      enabled: true
+      storageClass: "standard"  # Replace with your storage class if different
+      size: 10Gi
+
+# Django Application Configuration
+django:
+  image:
+    repository: your-django-image-repo  # Replace with your Docker image repository
+    tag: latest                       # Replace with your Docker image tag
+    pullPolicy: IfNotPresent
+  replicaCount: 3
+  service:
+    type: ClusterIP
+    port: 8000
+  env:
+    DJANGO_SETTINGS_MODULE: tracking_system.settings
+    DATABASE_HOST: postgresql          # Service name of PostgreSQL primary
+    DATABASE_PORT: 5432
+    DATABASE_SLAVE_HOST: postgresql-replica  # Service name of PostgreSQL replica
+    DATABASE_NAME: my_db
+    DATABASE_USER: tracking_user
+    DATABASE_PASSWORD: tracking_password
+
+# Ingress Configuration (Optional)
+ingress:
+  enabled: true
+  annotations:
+    kubernetes.io/ingress.class: nginx
+  hosts:
+    - host: tracking-system.local        # Replace with your domain
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []  # Add TLS configuration if needed
+
+# Resource Configuration (Optional)
+resources:
+  django:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 250m
+      memory: 256Mi

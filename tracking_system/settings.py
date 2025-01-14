@@ -12,10 +12,6 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 
 from pathlib import Path
 import os
-import dotenv
-
-dotenv.load_dotenv()
-
 
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -90,22 +86,21 @@ WSGI_APPLICATION = 'tracking_system.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.environ.get("POSTGRES_DB_MASTER",'my_db'),
-        'USER': os.environ.get("POSTGRES_USER_MASTER",'postgres'),
-        'PASSWORD': os.environ.get("POSTGRES_PASSWORD_MASTER",'master_password'),
-        'HOST': os.environ.get("MASTER_HOST", 'db_master'),
-        'PORT': os.environ.get("MASTER_PORT",'5432'),
+        'NAME': os.environ.get('DATABASE_NAME'),
+        'USER': os.environ.get('DATABASE_USER'),
+        'PASSWORD': os.environ.get('DATABASE_PASSWORD'),
+        'HOST': os.environ.get('DATABASE_MASTER_HOST'),
+        'PORT': '5432',
     },
     'replica': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.environ.get("POSTGRES_DB_SLAVE",'my_db'),
-        'USER': os.environ.get("POSTGRES_USER_SLAVE",'replicator'),
-        'PASSWORD': os.environ.get("POSTGRES_PASSWORD_SLAVE",'replicator_password'),
-        'HOST': os.environ.get("SLAVE_HOST", 'db_slave'),
-        'PORT': os.environ.get("MASTER_PORT",'5432'),
-    },
+        'NAME': os.environ.get('DATABASE_NAME'),
+        'USER': os.environ.get('DATABASE_USER'),
+        'PASSWORD': os.environ.get('DATABASE_PASSWORD'),
+        'HOST': os.environ.get('DATABASE_SLAVE_HOST'),
+        'PORT': '5432',
+    }
 }
-
 DATABASE_ROUTERS = ['tracking_system.db_routers.MasterSlaveRouter']
 
 

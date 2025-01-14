@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: "tracking-system"
+  labels:
+    app: "tracking-system"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: "tracking-system"
+  template:
+    metadata:
+      labels:
+        app: "tracking-system"
+    spec:
+      containers:
+        - name: "tracking-system"
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.port }}
+              protocol: TCP
+          envFrom:
+          - configMapRef:
+              name: tracking-system-configmap

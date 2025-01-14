@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: db-master
+  labels:
+    app: db-master
+spec:
+  replicas: {{ .Values.database.master.replicaCount }}
+  selector:
+    matchLabels:
+      app: db-master
+  template:
+    metadata:
+      labels:
+        app: db-master
+    spec:
+      containers:
+        - name: postgres-master
+          image: "{{ .Values.database.image.repository }}:{{ .Values.database.image.tag }}"
+          imagePullPolicy: {{ .Values.database.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.database.master.service.port }}
+          envFrom:
+            - configMapRef:
+                name: db-config
+            - secretRef:
+                name: db-credentials

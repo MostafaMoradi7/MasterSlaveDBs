@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "phase-2.fullname" . }}-django
+  labels:
+    app: {{ include "phase-2.name" . }}
+    component: django
+spec:
+  replicas: {{ .Values.django.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ include "phase-2.name" . }}
+      component: django
+  template:
+    metadata:
+      labels:
+        app: {{ include "phase-2.name" . }}
+        component: django
+    spec:
+      containers:
+        - name: django
+          image: "{{ .Values.django.image.repository }}:{{ .Values.django.image.tag }}"
+          imagePullPolicy: {{ .Values.django.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.django.service.port }}
+          env:
+            - name: DJANGO_SETTINGS_MODULE
+              value: "{{ .Values.django.env.DJANGO_SETTINGS_MODULE }}"
+            - name: DATABASE_HOST
+              value: "{{ .Values.django.env.DATABASE_HOST }}"
+            - name: DATABASE_PORT
+              value: "{{ .Values.django.env.DATABASE_PORT }}"
+            - name: DATABASE_SLAVE_HOST
+              value: "{{ .Values.django.env.DATABASE_SLAVE_HOST }}"
+            - name: DATABASE_NAME
+              value: "{{ .Values.django.env.DATABASE_NAME }}"
+            - name: DATABASE_USER
+              value: "{{ .Values.django.env.DATABASE_USER }}"
+            - name: DATABASE_PASSWORD
+              value: "{{ .Values.django.env.DATABASE_PASSWORD }}"
+          readinessProbe:
+            httpGet:
+              path: /health/
+              port: {{ .Values.django.service.port }}
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health/
+              port: {{ .Values.django.service.port }}
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          resources:
+            limits:
+              cpu: {{ .Values.resources.django.limits.cpu }}
+              memory: {{ .Values.resources.django.limits.memory }}
+            requests:
+              cpu: {{ .Values.resources.django.requests.cpu }}
+              memory: {{ .Values.resources.django.requests.memory }}

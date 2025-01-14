@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: db-slave
+  labels:
+    app: db-slave
+spec:
+  replicas: {{ .Values.database.slave.replicaCount }}
+  selector:
+    matchLabels:
+      app: db-slave
+  template:
+    metadata:
+      labels:
+        app: db-slave
+    spec:
+      containers:
+        - name: postgres-slave
+          image: "{{ .Values.database.image.repository }}:{{ .Values.database.image.tag }}"
+          imagePullPolicy: {{ .Values.database.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.database.slave.service.port }}
+          envFrom:
+            - configMapRef:
+                name: db-config
+            - secretRef:
+                name: db-credentials
+          # Add environment variables or commands to configure replication

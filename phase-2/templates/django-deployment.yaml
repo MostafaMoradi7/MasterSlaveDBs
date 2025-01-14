@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: django-app
+  labels:
+    app: django-app
+spec:
+  replicas: {{ .Values.django.replicaCount }}
+  selector:
+    matchLabels:
+      app: django-app
+  template:
+    metadata:
+      labels:
+        app: django-app
+    spec:
+      containers:
+        - name: django
+          image: "{{ .Values.django.image.repository }}:{{ .Values.django.image.tag }}"
+          imagePullPolicy: {{ .Values.django.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.django.service.port }}
+          env:
+            - name: DJANGO_SETTINGS_MODULE
+              value: "{{ .Values.django.env.DJANGO_SETTINGS_MODULE }}"
+            - name: DATABASE_MASTER_HOST
+              value: "{{ .Values.django.env.DATABASE_MASTER_HOST }}"
+            - name: DATABASE_SLAVE_HOST
+              value: "{{ .Values.django.env.DATABASE_SLAVE_HOST }}"
+            - name: DATABASE_NAME
+              value: "{{ .Values.django.env.DATABASE_NAME }}"
+            - name: DATABASE_USER
+              valueFrom:
+                secretKeyRef:
+                  name: db-credentials
+                  key: database_user
+            - name: DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: db-credentials
+                  key: database_password
+          readinessProbe:
+            httpGet:
+              path: /health/
+              port: {{ .Values.django.service.port }}
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health/
+              port: {{ .Values.django.service.port }}
+            initialDelaySeconds: 30
+            periodSeconds: 30

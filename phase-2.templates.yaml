@@ -1,0 +1,284 @@
+---
+# Source: phase-2/templates/00-init-configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tracking-system-phase-2-init-sql
+data:
+  00_init.sql: |
+    -- 00_init.sql
+    -- Grant all privileges on the database and schema to the Django user
+    
+    -- Grant privileges on the database
+    GRANT ALL PRIVILEGES ON DATABASE my_db TO postgres;
+    CREATE USER replicator WITH REPLICATION ENCRYPTED PASSWORD 'replicator_password';
+    
+    -- Grant privileges on the public schema
+    GRANT ALL PRIVILEGES ON SCHEMA public TO postgres;
+    ALTER DEFAULT PRIVILEGES IN SCHEMA public
+      GRANT ALL PRIVILEGES ON TABLES TO postgres;
+    
+    ALTER DEFAULT PRIVILEGES IN SCHEMA public
+      GRANT ALL PRIVILEGES ON TABLES TO replicator;
+    
+    -- Grant privileges on all existing tables, sequences, and functions
+    GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO postgres;
+    GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO postgres;
+    GRANT ALL PRIVILEGES ON ALL FUNCTIONS IN SCHEMA public TO postgres;
+    
+    -- Ensure privileges are granted to future objects
+    ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL PRIVILEGES ON TABLES TO postgres;
+    ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL PRIVILEGES ON SEQUENCES TO postgres;
+    ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL PRIVILEGES ON FUNCTIONS TO postgres;
+    
+    GRANT ALL PRIVILEGES ON DATABASE my_db TO replicator;
+    
+    -- Grant privileges on the public schema
+    GRANT ALL PRIVILEGES ON SCHEMA public TO replicator;
+    ALTER DEFAULT PRIVILEGES IN SCHEMA public
+      GRANT ALL PRIVILEGES ON TABLES TO replicator;
+    
+    -- Grant privileges on all existing tables, sequences, and functions
+    GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO replicator;
+    GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO replicator;
+    GRANT ALL PRIVILEGES ON ALL FUNCTIONS IN SCHEMA public TO replicator;
+    
+    -- Ensure privileges are granted to future objects
+    ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL PRIVILEGES ON TABLES TO replicator;
+    ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL PRIVILEGES ON SEQUENCES TO replicator;
+    ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL PRIVILEGES ON FUNCTIONS TO replicator;
+    
+    -- Create a physical replication slot
+    -- SELECT pg_create_physical_replication_slot('replication_slot');
+
+---
+# Source: phase-2/templates/00-init-configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tracking-system-phase-2-django
+data:
+  POSTGRES_USER_MASTER: postgres
+  POSTGRES_PASSWORD_MASTER: master_password
+  POSTGRES_DB_MASTER: my_db
+  MASTER_HOST: tracking-system-phase-2-db-master
+  MASTER_PORT: "5432"
+  POSTGRES_USER_SLAVE: replicator
+  POSTGRES_PASSWORD_SLAVE: replicator_password
+  POSTGRES_DB_SLAVE: my_db
+  SLAVE_HOST: tracking-system-phase-2-db-slave
+  SLAVE_PORT: "5432"
+  PORT: "8000"
+---
+# Source: phase-2/templates/db-master-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: tracking-system-phase-2-db-master
+  labels:
+    app: phase-2
+    role: db-master
+spec:
+  selector:
+    app: phase-2
+    role: db-master
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: 5432
+      protocol: TCP
+---
+# Source: phase-2/templates/db-slave-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: tracking-system-phase-2-db-slave
+  labels:
+    app: phase-2
+    role: db-slave
+spec:
+  selector:
+    app: phase-2
+    role: db-slave
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: 5432
+      protocol: TCP
+---
+# Source: phase-2/templates/django-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: tracking-system-phase-2-django
+spec:
+  type: NodePort
+  selector:
+    app: phase-2
+    tier: django
+  ports:
+    - port: 80
+      targetPort: 8000
+      nodePort: 30007
+---
+# Source: phase-2/templates/db-master-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tracking-system-phase-2-db-master
+  labels:
+    app: phase-2
+    role: db-master
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: phase-2
+      role: db-master
+  template:
+    metadata:
+      labels:
+        app: phase-2
+        role: db-master
+    spec:
+      containers:
+        - name: db-master
+          image: "postgres:14-alpine"
+          imagePullPolicy: IfNotPresent
+          # Listen on port 5432
+          ports:
+            - containerPort: 5432
+
+          # Avoid multiline environment var. If you must keep it, remove the '\n' or
+          # handle it in a custom config file.
+          env:
+            - name: POSTGRES_USER
+              value: "postgres"
+            - name: POSTGRES_PASSWORD
+              value: "master_password"
+            - name: POSTGRES_DB
+              value: "my_db"
+            # If you need 'POSTGRES_HOST_AUTH_METHOD', keep it simple:
+            - name: POSTGRES_HOST_AUTH_METHOD
+              value: "scram-sha-256"
+            # Possibly remove or adjust this if not needed
+            - name: POSTGRES_INITDB_ARGS
+              value: "--auth-host=scram-sha-256"
+
+          # Let the official entrypoint handle user creation and init scripts
+          command:
+            - "docker-entrypoint.sh"
+          # Pass your custom flags to Postgres via args
+          args:
+            - "postgres"
+            - "-c"
+            - "wal_level=replica"
+            - "-c"
+            - "hot_standby=on"
+            - "-c"
+            - "max_wal_senders=10"
+            - "-c"
+            - "max_replication_slots=10"
+            - "-c"
+            - "hot_standby_feedback=on"
+
+          # Mount your init SQL script
+          volumeMounts:
+            - name: init-sql
+              mountPath: /docker-entrypoint-initdb.d
+              readOnly: true
+      volumes:
+        - name: init-sql
+          configMap:
+            name: tracking-system-phase-2-init-sql
+            # Mount the key that matches the script name
+            items:
+              - key: 00_init.sql
+                path: 00_init.sql
+---
+# Source: phase-2/templates/db-slave-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tracking-system-phase-2-db-slave
+  labels:
+    app: phase-2
+    role: db-slave
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: phase-2
+      role: db-slave
+  template:
+    metadata:
+      labels:
+        app: phase-2
+        role: db-slave
+    spec:
+      containers:
+        - name: db-slave
+          image: "postgres:14-alpine"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5432
+          env:
+            - name: PGUSER
+              value: "replicator"
+            - name: PGPASSWORD
+              value: "replicator_password"
+          command:
+            - "bash"
+          args:
+            - "-c"
+            - |
+              until pg_basebackup --pgdata=/var/lib/postgresql/data \
+                                  -R \
+                                  --slot=replication_slot \
+                                  --host=tracking-system-phase-2-db-master \
+                                  --port=5432;
+              do
+                echo "Waiting for master...";
+                sleep 2;
+              done;
+              echo "Base backup completed. Starting replica...";
+              chmod 0700 /var/lib/postgresql/data;
+              exec postgres
+---
+# Source: phase-2/templates/django-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tracking-system-phase-2-django
+  labels:
+    app: phase-2
+    tier: django
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: phase-2
+      tier: django
+  template:
+    metadata:
+      labels:
+        app: phase-2
+        tier: django
+    spec:
+      containers:
+        - name: django
+          image: "tracking-system:latest"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: tracking-system-phase-2-django
+          command:
+            - "sh"
+          args:
+            - "-c"
+            - |
+              python manage.py makemigrations && \
+              python manage.py migrate && \
+              python manage.py runserver 0.0.0.0:8000

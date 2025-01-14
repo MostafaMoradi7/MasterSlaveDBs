@@ -20,9 +20,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Install python-dotenv
 RUN pip install python-dotenv
 
-# Load environment variables from .env file
-RUN python -c "from dotenv import load_dotenv; load_dotenv(override=True)"
-
 # Expose the port the app will run on
 ARG PORT=8000
 ENV PORT=${PORT}

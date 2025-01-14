@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tracking-system-configmap
+data:
+  DATABASE_MASTER_HOST: postgres-postgresql-primary
+  MASTER_PORT: "5432"
+  PORT: "8000"
+  DATABASE_NAME: my_db
+  DATABASE_PASSWORD: password
+  DATABASE_USER: postgres
+  DATABASE_SLAVE_HOST: postgres-postgresql-read
+  SLAVE_PORT: "5432"
