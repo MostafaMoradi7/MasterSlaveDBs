@@ -1,0 +1,17 @@
+architecture: replication
+
+auth:
+  postgresPassword: "password"
+  replicationPassword: "password"
+
+primary:
+  persistence:
+    enabled: true
+    size: 100Mi
+
+readReplicas:
+  replicaCount: 2
+  persistence:
+    enabled: true
+    size: 100Mi
+
